@@ -32,18 +32,7 @@ if [ ! -x "$(which docker)" ]; then
         sudo mv docker-machine /usr/local/bin/docker-machine
     fi 
     
-    # add apache bench
-    sudo yum install -y nginx
-    echo
-    echo sudo docker version
-    sudo docker version    
-    echo 
-    echo please logout and relogin so that the group settings 
-    echo are applied to your session
-    echo
-    exit
 fi
-
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # helper functions 
@@ -62,12 +51,11 @@ if [ $# -lt 1 ] || [ "$1" = "help" ]; then
    echo
    echo "Commands:"
    echo
-   echo "train      Creates the training environment"
-   echo "prod       Creates the production environment"
+   echo "muzzu_uat      Creates the environment"
+   echo "muzzu_sit       Creates the production environment"
    echo "pack       Tag and push production images"
    echo "status     Display the status of the environment"
    echo "test       Quick test - header info only" 
-   echo "bench      Run benchmarking tests" 
    echo "clean      Removes dangling images and exited containers"
    echo "images     List images"
    echo
@@ -76,14 +64,14 @@ fi
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # training
-if [ "$1" = "train" ]; then
+if [ "$1" = "muzzu_uat" ]; then
 	if [ $# -lt 2 ]; then
         echo
         echo "usage : $pn $1 [ build | up | down ]"
     else
         cd $1
             cmd="$2"
-            if [ "$2" = "build" ]; then docker build -t train_web ./web;fi
+            if [ "$2" = "build" ]; then docker build -t muzzu_uat _web ./web;fi
             if [ "$2" = "up" ]; then cmd="up -d";fi;
             docker-compose $cmd $3 $4
             if [ "$2" = "build" ]; then echo;docker images
@@ -124,10 +112,10 @@ fi
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # pack
 if [ "$1" = "pack" ]; then
-    docker tag prod_static codemarc/twipstatic
-    docker tag prod_web codemarc/twipweb
-    docker push codemarc/twipstatic
-    docker push codemarc/twipweb
+    docker tag prod_static muzzu/companystatic
+    docker tag prod_web muzzu/companyweb
+    docker push codemarc/companystatic
+    docker push codemarc/companyweb
 	echo;exit
 fi
 
