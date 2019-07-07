@@ -1,53 +1,39 @@
-# AlpineLinux with a glibc-2.21 and Oracle Jdk 8
-FROM alpine:3.3
-MAINTAINER Marc J. Greenberg <codemarc@gmail.com>
 
-RUN apk --update add curl ca-certificates tar && \
-    curl -Ls https://circle-artifacts.com/gh/andyshinn/alpine-pkg-glibc/6/artifacts/0/home/ubuntu/alpine-pkg-glibc/packages/x86_64/glibc-2.21-r2.apk > /tmp/glibc-2.21-r2.apk && \
-    apk add --allow-untrusted /tmp/glibc-2.21-r2.apk
+FROM tomcat:8.5.38-jre8
 
-# Java Version
-ENV JAVA_VERSION_MAJOR 8
-ENV JAVA_VERSION_MINOR 77
-ENV JAVA_VERSION_BUILD 03
-ENV JAVA_PACKAGE       jdk
+MAINTAINER Mujamil Ahamed
 
-# Download and unarchive Java
-RUN mkdir /opt && curl -jksSLH "Cookie: oraclelicense=accept-securebackup-cookie"\
-  http://download.oracle.com/otn-pub/java/jdk/${JAVA_VERSION_MAJOR}u${JAVA_VERSION_MINOR}-b${JAVA_VERSION_BUILD}/${JAVA_PACKAGE}-${JAVA_VERSION_MAJOR}u${JAVA_VERSION_MINOR}-linux-x64.tar.gz \
-    | tar -xzf - -C /opt &&\
-    ln -s /opt/jdk1.${JAVA_VERSION_MAJOR}.0_${JAVA_VERSION_MINOR} /opt/jdk &&\
-    rm -rf /opt/jdk/*src.zip \
-           /opt/jdk/lib/missioncontrol \
-           /opt/jdk/lib/visualvm \
-           /opt/jdk/lib/*javafx* \
-           /opt/jdk/jre/lib/plugin.jar \
-           /opt/jdk/jre/lib/ext/jfxrt.jar \
-           /opt/jdk/jre/bin/javaws \
-           /opt/jdk/jre/lib/javaws.jar \
-           /opt/jdk/jre/lib/desktop \
-           /opt/jdk/jre/plugin \
-           /opt/jdk/jre/lib/deploy* \
-           /opt/jdk/jre/lib/*javafx* \
-           /opt/jdk/jre/lib/*jfx* \
-           /opt/jdk/jre/lib/amd64/libdecora_sse.so \
-           /opt/jdk/jre/lib/amd64/libprism_*.so \
-           /opt/jdk/jre/lib/amd64/libfxplugins.so \
-           /opt/jdk/jre/lib/amd64/libglass.so \
-           /opt/jdk/jre/lib/amd64/libgstreamer-lite.so \
-           /opt/jdk/jre/lib/amd64/libjavafx*.so \
-           /opt/jdk/jre/lib/amd64/libjfx*.so
+ENV GITHUB_REPO https://github.com/Muahamed/tw_assignment/tree/master/artefacts
+ENV APP_FILE companyNews.war
+ENV TERM xterm
+ENV JAVA_OPTS -Djava.security.egd=file:/dev/./urandom
 
-# Set environment
-ENV JAVA_HOME /opt/jdk
-ENV PATH ${PATH}:${JAVA_HOME}/bin
+RUN apt-get update -qq \
+  && apt-get install -qqy curl wget \
+  && apt-get clean \
+  \
+  && touch /var/log/companyNews.log \
+  && chmod 666 /var/log/companyNews.log
+RUN rm -rf /usr/local/tomcat/webapps/ROOT*
+COPY companyNews.war /usr/local/tomcat/webapps/ROOT.war
+COPY tomcat-users.xml /usr/local/tomcat/conf/tomcat-users.xml
+CMD chmod +x /usr/local/tomcat/bin/catalina.sh
+CMD [ "/usr/local/tomcat/bin/catalina.sh", "stop" ]
+CMD ["/usr/local/tomcat/bin/catalina.sh", "run"]
+# install Filebeat
+ENV FILEBEAT_VERSION=filebeat_1.2.3_amd64.deb
+RUN curl -L -O https://download.elastic.co/beats/filebeat/${FILEBEAT_VERSION} \
+ && dpkg -i ${FILEBEAT_VERSION} \
+ && rm ${FILEBEAT_VERSION}
 
-EXPOSE 8080
+# configure Filebeat
+ADD filebeat.yml /etc/filebeat/filebeat.yml
 
-#Add the web app and jetty runner
-WORKDIR /tip/
-ADD http://central.maven.org/maven2/org/mortbay/jetty/jetty-runner/7.6.5.v20120716/jetty-runner-7.6.5.v20120716.jar ./jetty-runner.jar    
-ADD https://s3.amazonaws.com/infra-assessment/companyNews.war  ./
+# CA cert
+RUN mkdir -p /etc/pki/tls/certs
+ADD logstash-beats.crt /etc/pki/tls/certs/logstash-beats.crt
 
-CMD java -jar jetty-runner.jar companyNews.war
-
+# start Filebeat
+ADD ./start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
+CMD [ "/usr/local/bin/start.sh" ]

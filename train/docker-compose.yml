@@ -4,18 +4,64 @@ services:
     image: train_web
     ports:
       - 8080
+    hostname: web1
+    container_name: web1
+    networks:
+      - net
     volumes:
-      - ../data:/Users/dcameron/persistence
+      - ../data:/Users/muzzu/persistence
   web2:
     image: train_web
     ports:
       - 8080
+    hostname: web2
+    networks:
+      - net
+    container_name: web2
     volumes:
-      - ../data:/Users/dcameron/persistence
+      - ../data:/Users/muzzu/persistence
+  web3:
+    image: train_test
+    ports:
+      - 8080
+    hostname: web3
+    networks:
+      - net
+    container_name: web3
+
   static:
     build: ./static/
-    links:
+    environment:
+      - VIRTUAL_HOST=*/styles/*.*,*/images/*.*
+      - VIRTUAL_HOST_WEIGHT=0  
+    depends_on:
       - web1
       - web2
     ports:
       - 80:80
+    networks:
+      - net
+    hostname: static
+    container_name: static
+  elk:
+    image: sebp/elk:latest
+    ports:
+    - 5601:5601
+    - 9200:9200
+    - 5044:5044
+    - 5000:5000
+    networks:
+    - net
+    volumes:
+    - company_elk:/var/lib/elasticsearch
+    hostname: elk
+    container_name: elk
+volumes:
+  company_data:
+    external: true
+  company_elk:
+    external: true
+
+networks:
+  net:
+    driver: bridge
